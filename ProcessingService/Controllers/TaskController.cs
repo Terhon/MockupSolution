@@ -30,7 +30,7 @@ namespace ProcessingService.Controllers
         public IActionResult GetResult(string requestId)
         {
             if (!ResultStore.Data.TryGetValue(requestId, out var result))
-                return StatusCode(202, new { status = "Processing" });
+                return Accepted(new { status = "Processing" });
 
             return Ok(new { result });
         }
