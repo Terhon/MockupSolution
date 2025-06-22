@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace PollingService.Services
@@ -15,36 +16,57 @@ namespace PollingService.Services
             _queue = queue;
         }
 
-        public Task<string?> GetResultAsync(string requestId)
+        public async Task<string?> GetResultAsync(string requestId)
         {
-            _cache.TryGetValue($"result:{requestId}", out string? result);
-            return Task.FromResult(result);
+            _cache.TryGetValue(requestId, out string? result);
+            return result;
         }
 
-        public Task<string> StartProcessingAsync(string clientId)
+        public async Task<string?> StartProcessingAsync(string clientId)
         {
-            if (_cache.TryGetValue($"client:{clientId}", out string cachedResult))
-            {
-                return Task.FromResult(cachedResult);
-            }
+            if (_cache.TryGetValue($"client:{clientId}", out string? cachedResult))
+                return cachedResult;
 
-            var requestId = Guid.NewGuid().ToString();
+            Console.WriteLine($"client id {clientId}");
+
+            var client = _clientFactory.CreateClient();
+            var response = await client.PostAsync($"http://localhost:5188/api/task/{clientId}", null);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Start failed with status code {response.StatusCode} and message {response.Content}");
+
+            var json = await response.Content.ReadAsStringAsync();
+            var requestId = JsonDocument.Parse(json).RootElement.GetProperty("requestId").GetString();
+            Console.WriteLine($"request id {requestId}");
 
             _queue.QueueBackgroundWorkItem(async token =>
             {
-                var client = _clientFactory.CreateClient();
-                var response = await client.PostAsync($"http://localhost:5188/api/task/{clientId}", null);
-
-                if (response.IsSuccessStatusCode)
+                while (!token.IsCancellationRequested)
                 {
-                    var result = await response.Content.ReadAsStringAsync();
+                    var resultResponse = await client.GetAsync($"http://localhost:5188/api/task/result/{requestId}", token);
 
-                    _cache.Set($"client:{clientId}", result, TimeSpan.FromMinutes(5));
-                    _cache.Set($"result:{requestId}", result, TimeSpan.FromMinutes(10));
+                    if (resultResponse.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        var json = await resultResponse.Content.ReadAsStringAsync(token);
+                        var result = JsonDocument.Parse(json).RootElement.GetProperty("result").GetString();
+                        _cache.Set(clientId, result, TimeSpan.FromMinutes(5));
+
+                        Console.WriteLine($"{result} for {clientId}");
+                        return;
+                    }
+                    else if (resultResponse.StatusCode == System.Net.HttpStatusCode.Accepted)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(1), token);
+                    }
+                    else
+                    {
+                        throw new HttpRequestException($"Unexpected status code: {resultResponse.StatusCode}");
+                    }
                 }
+
+                throw new OperationCanceledException();
             });
 
-            return Task.FromResult(requestId);
+            return requestId;
         }
     }
 }

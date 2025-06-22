@@ -26,9 +26,9 @@ namespace PollingService.Controllers
         {
             var result = await _dataService.GetResultAsync(requestId);
             if (result == null)
-                return NotFound("Still processing...");
+                return Accepted("Still processing...");
 
-            return Ok(result);
+            return Ok(new { result });
         }
     }
 }
