@@ -1,18 +1,28 @@
 ﻿import {useCookies} from "react-cookie";
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 
 
 function Fetch() {
-    const [cookies, setCookie] = useCookies(['user'])
+    const [cookies, setCookie] = useCookies(['userId'])
     const [requestId, setRequestId] = useState(null);
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
-    
-    setCookie('user', 'test')
+
+    useEffect(() => {
+        if (!cookies.userId) {
+            const newId = crypto.randomUUID();
+            
+            const expires = new Date();
+            expires.setTime(expires.getTime() + 60 * 60 * 1000);
+            
+            setCookie("userId", newId, { path: "/", expires });
+            console.log("New userId cookie set:", newId);
+        } else {
+            console.log("Existing userId:", cookies.userId);
+        }
+    }, [cookies, setCookie]);
     
     return (<div>
-        <p>Cookie: {cookies.user}</p>
-        
         <h1>Data</h1>
         <button /*onClick={fetchData} disabled={loading}*/>
             {loading ? 'Loading...' : 'Request Data'}
