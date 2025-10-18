@@ -1,6 +1,7 @@
 import React from 'react';
 import {CookiesProvider} from 'react-cookie'
 import Fetch from "./Fetch";
+import './App.css'
 
 function App() {
     return (
@@ -10,4 +11,4 @@ function App() {
     );
 }
 
-export default App;
+export default App
