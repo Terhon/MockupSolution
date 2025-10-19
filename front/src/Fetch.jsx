@@ -4,7 +4,7 @@ import React, {useEffect, useState, useRef} from "react";
 
 function Fetch() {
     const [cookies, setCookie] = useCookies(['userId'])
-    const [requestId, setRequestId] = useState(null);
+    const [requestId, setRequestId] = useState(localStorage.getItem("lastRequestId"));
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
     const pollingRef = useRef(null);
@@ -28,7 +28,7 @@ function Fetch() {
         setResult(null);
 
         try {
-            const response = await fetch("https://localhost:5001/api/data/request", {
+            const response = await fetch("http://localhost:5051/api/data/request", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({userId: cookies.userId})
@@ -40,7 +40,7 @@ function Fetch() {
             const {requestId} = await response.json();
             console.log("Request started with ID:", requestId);
             setRequestId(requestId);
-
+            localStorage.setItem("lastRequestId", requestId);
             startPolling(requestId);
         } catch (err) {
             console.error("Error:", err);
@@ -49,9 +49,13 @@ function Fetch() {
     };
 
     const startPolling = (id) => {
+        if (pollingRef.current) 
+            clearInterval(pollingRef.current);
+        setLoading(true);
+        
         pollingRef.current = setInterval(async () => {
             try {
-                const res = await fetch(`https://localhost:5001/api/data/status/${id}`);
+                const res = await fetch(`http://localhost:5051/api/data/status/${id}`);
                 if (!res.ok)
                     throw new Error("Polling failed");
 
@@ -63,6 +67,7 @@ function Fetch() {
                     setLoading(false);
                     clearInterval(pollingRef.current);
                     pollingRef.current = null;
+                    localStorage.removeItem("lastRequestId");
                 }
             } catch (err) {
                 console.error(err);
@@ -70,10 +75,14 @@ function Fetch() {
                 pollingRef.current = null;
                 setLoading(false);
             }
-        }, 3000);
+        }, 10000);
     };
 
     useEffect(() => {
+        if (requestId && !result) {
+            console.log("Resuming polling for request:", requestId);
+            startPolling(requestId);
+        }
         return () => {
             if (pollingRef.current) 
                 clearInterval(pollingRef.current);
