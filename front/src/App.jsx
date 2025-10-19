@@ -1,6 +1,6 @@
 import React from 'react';
 import {CookiesProvider} from 'react-cookie'
-import Fetch from "./Fetch";
+import Fetch from "./features/Fetch";
 import './App.css'
 
 function App() {
