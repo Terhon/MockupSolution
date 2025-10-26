@@ -13,10 +13,8 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add memory cache
 builder.Services.AddMemoryCache();
 
-// Register services
 builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
 builder.Services.AddHostedService<QueuedHostedService>();
 builder.Services.AddHttpClient();
@@ -24,9 +22,14 @@ builder.Services.AddScoped<IDataService, DataService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 app.UseCors("AllowReactApp");
 app.UseRouting();
+
+    app.UseSwagger();
+    app.UseSwaggerUI();
+
 app.MapControllers();
 app.Run();
