@@ -27,9 +27,11 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 app.UseCors("AllowReactApp");
 app.UseRouting();
-
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI();
-
+}
 app.MapControllers();
 app.Run();
+
