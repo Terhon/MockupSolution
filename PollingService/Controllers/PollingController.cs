@@ -5,27 +5,22 @@ namespace PollingService.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class PollingController : ControllerBase
+    public class PollingController(IDataService dataService) : ControllerBase
     {
-        private readonly IDataService _dataService;
-
-        public PollingController(IDataService dataService)
+        [HttpGet("{clientId}")]
+        public async Task<IActionResult> Get(string clientId)
         {
-            _dataService = dataService;
-        }
+            if (dataService.TryGetResult(clientId, out var result))
+                return Ok(new { result });
 
-        [HttpPost("{clientId}")]
-        public async Task<IActionResult> StartProcessing(string clientId)
-        {
-            var requestId = await _dataService.StartProcessingAsync(clientId);
-            return Ok(new { requestId });
+            var requestId = await dataService.StartProcessingAsync(clientId);
+            return Accepted(new { requestId });
         }
 
         [HttpGet("result/{requestId}")]
-        public async Task<IActionResult> GetResult(string requestId)
+        public IActionResult GetResult(string requestId)
         {
-            var result = await _dataService.GetResultAsync(requestId);
-            if (result == null)
+            if (!dataService.TryGetResult(requestId, out var result))
                 return Accepted("Still processing...");
 
             return Ok(new { result });
