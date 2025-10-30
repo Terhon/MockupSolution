@@ -19,6 +19,7 @@ builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
 builder.Services.AddHostedService<QueuedHostedService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IDataService, DataService>();
+builder.Services.AddScoped<IExternalApiClient, ExternalApiClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
