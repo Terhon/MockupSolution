@@ -11,7 +11,7 @@ namespace PollingService.Controllers
         public IActionResult Get(string clientId)
         {
             if (dataService.TryGetCached(clientId, out var result))
-                return Ok(new { result });
+                return Ok(new Result(result));
 
             var requestId = dataService.StartFetchAsync(clientId);
             return Accepted(new { requestId });
@@ -24,7 +24,9 @@ namespace PollingService.Controllers
                 return NotFound(new { message = "Request not found" });
             if (!completed)
                 return Accepted("Still processing...");
-            return Ok(new { result });
+            return Ok(new Result(result));
         }
     }
+    
+    public record Result(string data);
 }

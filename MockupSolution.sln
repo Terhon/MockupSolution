@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcessingService", "Proces
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PollingService", "PollingService\PollingService.csproj", "{6D906BA2-BE3F-4824-B35E-0A2496D5012F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PollingService.Tests", "PollingService.Tests\PollingService.Tests.csproj", "{6902301E-F71E-4E21-A93B-0F4599A9E80C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,6 +22,10 @@ Global
 		{6D906BA2-BE3F-4824-B35E-0A2496D5012F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6D906BA2-BE3F-4824-B35E-0A2496D5012F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6D906BA2-BE3F-4824-B35E-0A2496D5012F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6902301E-F71E-4E21-A93B-0F4599A9E80C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6902301E-F71E-4E21-A93B-0F4599A9E80C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6902301E-F71E-4E21-A93B-0F4599A9E80C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6902301E-F71E-4E21-A93B-0F4599A9E80C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
