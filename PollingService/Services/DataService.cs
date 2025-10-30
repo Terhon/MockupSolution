@@ -1,66 +1,63 @@
-using System.Text.Json;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace PollingService.Services
 {
-    public class DataService(IMemoryCache cache, IHttpClientFactory clientFactory, IBackgroundTaskQueue queue)
+    public class DataService(IMemoryCache cache, IExternalApiClient externalApi, IBackgroundTaskQueue queue)
         : IDataService
     {
-        public bool TryGetResult(string requestId, out string data)
+        private readonly ConcurrentDictionary<string, Task<string>> _pending = new();
+        private readonly TimeSpan _defaultTimeout = TimeSpan.FromMinutes(5);
+        
+        public bool TryGetCached(string requestId, out string data)
         {
             data = string.Empty;
-            if (!cache.TryGetValue(requestId, out string result)) 
+            if (!cache.TryGetValue(requestId, out string result))
                 return false;
-            
+
             data = result;
             return true;
         }
 
-        public async Task<string> StartProcessingAsync(string clientId)
+        public string StartFetchAsync(string clientId)
         {
-            if (cache.TryGetValue($"client:{clientId}", out string cachedResult))
-                return cachedResult;
+            var existing = _pending.FirstOrDefault(x => x.Value.AsyncState?.ToString() == clientId);
+            if (!string.IsNullOrEmpty(existing.Key))
+                return existing.Key;
 
-            Console.WriteLine($"client id {clientId}");
+            var requestId = Guid.NewGuid().ToString();
 
-            var client = clientFactory.CreateClient();
-            var response = await client.PostAsync($"http://localhost:5188/api/task/{clientId}", null);
-            if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException($"Start failed with status code {response.StatusCode} and message {response.Content}");
-
-            var json = await response.Content.ReadAsStringAsync();
-            var requestId = JsonDocument.Parse(json).RootElement.GetProperty("requestId").GetString();
-            Console.WriteLine($"request id {requestId}");
-
-            queue.QueueBackgroundWorkItem(async token =>
+            var fetchTask = Task.Run(async () =>
             {
-                while (!token.IsCancellationRequested)
-                {
-                    var resultResponse = await client.GetAsync($"http://localhost:5188/api/task/result/{requestId}", token);
-
-                    if (resultResponse.StatusCode == System.Net.HttpStatusCode.OK)
-                    {
-                        var json = await resultResponse.Content.ReadAsStringAsync(token);
-                        var result = JsonDocument.Parse(json).RootElement.GetProperty("result").GetString();
-                        cache.Set(clientId, result, TimeSpan.FromMinutes(5));
-
-                        Console.WriteLine($"{result} for {clientId}");
-                        return;
-                    }
-                    else if (resultResponse.StatusCode == System.Net.HttpStatusCode.Accepted)
-                    {
-                        await Task.Delay(TimeSpan.FromSeconds(1), token);
-                    }
-                    else
-                    {
-                        throw new HttpRequestException($"Unexpected status code: {resultResponse.StatusCode}");
-                    }
-                }
-
-                throw new OperationCanceledException();
+                var data = await externalApi.GetDataAsync(clientId);
+                cache.Set(clientId, data, _defaultTimeout);
+                _pending.TryRemove(requestId, out _);
+                return data;
             });
 
+            _pending[requestId] = fetchTask;
             return requestId;
+        }
+
+        public bool TryGetResult(string requestId, out string? result, out bool completed)
+        {
+            if (_pending.TryGetValue(requestId, out var task))
+            {
+                if (task.IsCompletedSuccessfully)
+                {
+                    result = task.Result;
+                    completed = true;
+                    return true;
+                }
+
+                result = null;
+                completed = false;
+                return true;
+            }
+
+            result = null;
+            completed = false;
+            return false;
         }
     }
 }
