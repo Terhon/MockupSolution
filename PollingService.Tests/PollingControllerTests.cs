@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Moq;
 using FluentAssertions;
-using Xunit;
 using PollingService.Controllers;
 using PollingService.Services;
 
@@ -10,7 +9,13 @@ namespace PollingService.Tests;
 public class PollingControllerTests
 {
     private readonly Mock<IDataService> _mockCache = new();
-
+    private readonly PollingController _controller;
+    
+    public PollingControllerTests()
+    {
+        _controller = new PollingController(_mockCache.Object);
+    }
+    
     [Fact]
     public void Get_ReturnsOk_WhenDataIsCached()
     {
@@ -20,10 +25,9 @@ public class PollingControllerTests
         _mockCache
             .Setup(c => c.TryGetCached(id, out cachedValue))
             .Returns(true);
-        var controller = new PollingController(_mockCache.Object);
 
         // Act
-        var result = controller.Get(id);
+        var result = _controller.Get(id);
 
         // Assert
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -46,10 +50,8 @@ public class PollingControllerTests
             .Setup(c => c.StartFetchAsync(id))
             .Returns(requestId);
         
-        var controller = new PollingController(_mockCache.Object);
-
         // Act
-        var result = controller.Get(id);
+        var result = _controller.Get(id);
 
         // Assert
         var accepted = result.Should().BeOfType<AcceptedAtActionResult>().Subject;
@@ -69,8 +71,7 @@ public class PollingControllerTests
                             .Returns(false);
 
             // Act
-            var controller = new PollingController(_mockCache.Object);
-            var result = controller.GetResult(requestId);
+            var result = _controller.GetResult(requestId);
 
             // Assert
             var notFound = result.Should().BeOfType<NotFoundObjectResult>().Subject;
@@ -89,8 +90,7 @@ public class PollingControllerTests
                             .Returns(true);
 
             // Act
-            var controller = new PollingController(_mockCache.Object);
-            var result = controller.GetResult(requestId);
+            var result = _controller.GetResult(requestId);
 
             // Assert
             var accepted = result.Should().BeOfType<AcceptedResult>().Subject;
@@ -108,8 +108,7 @@ public class PollingControllerTests
                             .Returns(true);
 
             // Act
-            var controller = new PollingController(_mockCache.Object);
-            var result = controller.GetResult(requestId);
+            var result = _controller.GetResult(requestId);
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
