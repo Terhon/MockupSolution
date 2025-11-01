@@ -19,7 +19,7 @@ namespace PollingService.Services
             return true;
         }
 
-        public string StartFetchAsync(string clientId)
+        public string StartFetch(string clientId)
         {
             var existing = _pending.FirstOrDefault(x => x.Value.AsyncState?.ToString() == clientId);
             if (!string.IsNullOrEmpty(existing.Key))
