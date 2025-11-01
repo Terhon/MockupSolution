@@ -11,34 +11,29 @@ namespace PollingService.Services
         
         public bool TryGetCached(string clientId, out string data)
         {
-            data = string.Empty;
-            if (cache.TryGetValue(clientId, out string result))
-            {
-                data = result;
-                return true;
-            }
-
-            return false;
+            return cache.TryGetValue(clientId, out data!);
         }
 
-        public string StartFetch(string clientId)
+        public void StartFetch(string clientId)
         {
-            var existing = _pending.FirstOrDefault(x => x.Value.AsyncState?.ToString() == clientId);
-            if (!string.IsNullOrEmpty(existing.Key))
-                return existing.Key;
-
-            var requestId = Guid.NewGuid().ToString();
-
+            if(_pending.ContainsKey(clientId))
+                return;
+            
             var fetchTask = Task.Run(async () =>
             {
-                var data = await externalApi.GetDataAsync(clientId);
-                cache.Set(clientId, data, _defaultTimeout);
-                _pending.TryRemove(requestId, out _);
-                return data;
+                try
+                {
+                    var data = await externalApi.GetDataAsync(clientId);
+                    cache.Set(clientId, data, _defaultTimeout);
+                    return data;
+                }
+                finally
+                {
+                    _pending.TryRemove(clientId, out _);
+                }
             });
 
-            _pending[requestId] = fetchTask;
-            return requestId;
+            _pending[clientId] = fetchTask;
         }
     }
 }

@@ -50,7 +50,7 @@ public class PollingControllerTests
         _mockCache.TryGetCached(id, out Arg.Any<string>())
             .Returns(false);
 
-        _mockCache.StartFetch(id).Returns(requestId);
+        _mockCache.StartFetch(id);
 
         // Act
         var result = _controller.Get(id);
