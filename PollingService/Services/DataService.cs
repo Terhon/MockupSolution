@@ -14,12 +14,9 @@ namespace PollingService.Services
             return cache.TryGetValue(clientId, out data!);
         }
 
-        public void StartFetch(string clientId)
+        public async Task StartFetch(string clientId)
         {
-            if(_pending.ContainsKey(clientId))
-                return;
-            
-            var fetchTask = Task.Run(async () =>
+            await _pending.GetOrAdd(clientId, async _ =>
             {
                 try
                 {
@@ -29,11 +26,9 @@ namespace PollingService.Services
                 }
                 finally
                 {
-                    _pending.TryRemove(clientId, out _);
+                    _pending.TryRemove(clientId, out var obj);
                 }
             });
-
-            _pending[clientId] = fetchTask;
         }
     }
 }

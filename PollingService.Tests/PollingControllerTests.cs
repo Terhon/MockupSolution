@@ -17,7 +17,7 @@ public class PollingControllerTests
     }
 
     [Fact]
-    public void Get_ReturnsOk_WhenDataIsCached()
+    public async Task Get_ReturnsOk_WhenDataIsCached()
     {
         // Arrange
         var id = "test1";
@@ -32,7 +32,7 @@ public class PollingControllerTests
             );
 
         // Act
-        var result = _controller.Get(id);
+        var result = await _controller.Get(id);
 
         // Assert
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -41,7 +41,7 @@ public class PollingControllerTests
     }
 
     [Fact]
-    public void Get_ReturnsAccepted_WhenDataNotCached()
+    public async Task Get_ReturnsAccepted_WhenDataNotCached()
     {
         // Arrange
         var id = "test2";
@@ -53,7 +53,7 @@ public class PollingControllerTests
         _mockCache.StartFetch(id);
 
         // Act
-        var result = _controller.Get(id);
+        var result = await _controller.Get(id);
 
         // Assert
         result.Should().BeOfType<AcceptedResult>();
