@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Moq;
 using FluentAssertions;
+using NSubstitute;
 using PollingService.Controllers;
 using PollingService.Services;
 
@@ -8,23 +8,28 @@ namespace PollingService.Tests;
 
 public class PollingControllerTests
 {
-    private readonly Mock<IDataService> _mockCache = new();
+    private readonly IDataService _mockCache = Substitute.For<IDataService>();
     private readonly PollingController _controller;
-    
+
     public PollingControllerTests()
     {
-        _controller = new PollingController(_mockCache.Object);
+        _controller = new PollingController(_mockCache);
     }
-    
+
     [Fact]
     public void Get_ReturnsOk_WhenDataIsCached()
     {
         // Arrange
         var id = "test1";
         var cachedValue = "cached value";
-        _mockCache
-            .Setup(c => c.TryGetCached(id, out cachedValue))
-            .Returns(true);
+
+        _mockCache.TryGetCached(id, out Arg.Any<string>())
+            .Returns(x =>
+                {
+                    x[1] = cachedValue;
+                    return true;
+                }
+            );
 
         // Act
         var result = _controller.Get(id);
@@ -42,77 +47,92 @@ public class PollingControllerTests
         var id = "test2";
         var cachedValue = "cached value";
         var requestId = "req123";
-        _mockCache
-            .Setup(c => c.TryGetCached(id, out cachedValue))
-            .Returns(false);
         
-        _mockCache
-            .Setup(c => c.StartFetchAsync(id))
-            .Returns(requestId);
-        
+        _mockCache.TryGetCached(id, out Arg.Any<string>())
+            .Returns(x =>
+            {
+                x[1] = cachedValue;
+                return false;
+            });
+
+        _mockCache.StartFetchAsync(id).Returns(requestId);
+
         // Act
         var result = _controller.Get(id);
 
         // Assert
         var accepted = result.Should().BeOfType<AcceptedAtActionResult>().Subject;
         accepted.ActionName.Should().Be(nameof(PollingController.GetResult));
-        
+
         var value = accepted.Value.Should().BeAssignableTo<RequestData>().Subject;
-        (value.RequestId).Should().Be(requestId);
+        value.RequestId.Should().Be(requestId);
     }
- [Fact]
-        public void GetResult_ReturnsNotFound_WhenRequestMissing()
-        {
-            // Arrange
-            var requestId = "missing";
-            string? resultValue;
-            bool completed;
-            _mockCache.Setup(s => s.TryGetResult(requestId, out resultValue, out completed))
-                            .Returns(false);
 
-            // Act
-            var result = _controller.GetResult(requestId);
+    [Fact]
+    public void GetResult_ReturnsNotFound_WhenRequestMissing()
+    {
+        // Arrange
+        var requestId = "missing";
+        _mockCache.TryGetResult(requestId, out Arg.Any<string?>(), out Arg.Any<bool>())
+            .Returns(x =>
+            {
+                x[1] = null;
+                x[2] = false;
+                return false;
+            });
 
-            // Assert
-            var notFound = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-            var payload = notFound.Value.Should().BeOfType<ErrorResponse>().Subject;
-            payload.Message.Should().Be("Request not found");
-        }
+        // Act
+        var result = _controller.GetResult(requestId);
 
-        [Fact]
-        public void GetResult_ReturnsAccepted_WhenProcessing()
-        {
-            // Arrange
-            var requestId = "req-123";
-            var resultValue = "intermediate";
-            bool completed = false;
-            _mockCache.Setup(s => s.TryGetResult(requestId, out resultValue, out completed))
-                            .Returns(true);
+        // Assert
+        var notFound = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+        var payload = notFound.Value.Should().BeOfType<ErrorResponse>().Subject;
+        payload.Message.Should().Be("Request not found");
+    }
 
-            // Act
-            var result = _controller.GetResult(requestId);
+    [Fact]
+    public void GetResult_ReturnsAccepted_WhenProcessing()
+    {
+        // Arrange
+        var requestId = "req-123";
+        var resultValue = "intermediate";
+        bool completed = false;
+        _mockCache.TryGetResult(requestId, out Arg.Any<string?>(), out Arg.Any<bool>())
+            .Returns(x =>
+            {
+                x[1] = resultValue;
+                x[2] = completed;
+                return true;
+            });
 
-            // Assert
-            var accepted = result.Should().BeOfType<AcceptedResult>().Subject;
-            accepted.Value.Should().BeOfType<ProcessingResponse>();
-        }
+        // Act
+        var result = _controller.GetResult(requestId);
 
-        [Fact]
-        public void GetResult_ReturnsOk_WhenCompleted()
-        {
-            // Arrange
-            var requestId = "req-123";
-            var resultValue = "final-result";
-            bool completed = true;
-            _mockCache.Setup(s => s.TryGetResult(requestId, out resultValue, out completed))
-                            .Returns(true);
+        // Assert
+        var accepted = result.Should().BeOfType<AcceptedResult>().Subject;
+        accepted.Value.Should().BeOfType<ProcessingResponse>();
+    }
 
-            // Act
-            var result = _controller.GetResult(requestId);
+    [Fact]
+    public void GetResult_ReturnsOk_WhenCompleted()
+    {
+        // Arrange
+        var requestId = "req-123";
+        
+        _mockCache.TryGetResult(requestId, out Arg.Any<string?>(), out Arg.Any<bool>())
+            .Returns(x =>
+            {
+                x[1] = "final-result";
+                x[2] = true;
+                return true;
+            });
 
-            // Assert
-            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-            var payload = okResult.Value.Should().BeOfType<Result>().Subject;
-            payload.Data.Should().Be("final-result");
-        }
+        // Act
+        var result = _controller.GetResult(requestId);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var payload = okResult.Value.Should().BeOfType<Result>().Subject;
+        payload.Data.Should().Be("final-result");
+    }
 }
