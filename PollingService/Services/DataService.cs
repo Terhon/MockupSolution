@@ -3,16 +3,16 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace PollingService.Services
 {
-    public class DataService(IMemoryCache cache, IExternalApiClient externalApi, IBackgroundTaskQueue queue)
+    public class DataService(IMemoryCache cache, IExternalApiClient externalApi)
         : IDataService
     {
         private readonly ConcurrentDictionary<string, Task<string>> _pending = new();
         private readonly TimeSpan _defaultTimeout = TimeSpan.FromMinutes(5);
         
-        public bool TryGetCached(string requestId, out string data)
+        public bool TryGetCached(string clientId, out string data)
         {
             data = string.Empty;
-            if (!cache.TryGetValue(requestId, out string result))
+            if (!cache.TryGetValue(clientId, out string result))
                 return false;
 
             data = result;
