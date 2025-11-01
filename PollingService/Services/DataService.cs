@@ -12,11 +12,13 @@ namespace PollingService.Services
         public bool TryGetCached(string clientId, out string data)
         {
             data = string.Empty;
-            if (!cache.TryGetValue(clientId, out string result))
-                return false;
+            if (cache.TryGetValue(clientId, out string result))
+            {
+                data = result;
+                return true;
+            }
 
-            data = result;
-            return true;
+            return false;
         }
 
         public string StartFetch(string clientId)
@@ -37,27 +39,6 @@ namespace PollingService.Services
 
             _pending[requestId] = fetchTask;
             return requestId;
-        }
-
-        public bool TryGetResult(string requestId, out string? result, out bool completed)
-        {
-            if (_pending.TryGetValue(requestId, out var task))
-            {
-                if (task.IsCompletedSuccessfully)
-                {
-                    result = task.Result;
-                    completed = true;
-                    return true;
-                }
-
-                result = null;
-                completed = false;
-                return true;
-            }
-
-            result = null;
-            completed = false;
-            return false;
         }
     }
 }
