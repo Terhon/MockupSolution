@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+﻿import {useState, useEffect, useRef} from "react";
 
 export function useDataRequest(userId) {
     const [requestId, setRequestId] = useState(localStorage.getItem("lastRequestId"));
@@ -12,19 +12,18 @@ export function useDataRequest(userId) {
 
         pollingRef.current = setInterval(async () => {
             try {
-                const res = await fetch(`https://localhost:5001/api/data/status/${id}`);
-                if (!res.ok) 
+                const res = await fetch(`http://localhost:5223/api/Polling/${id}`);
+                if (!res.ok)
                     throw new Error("Polling failed");
 
-                const json = await res.json();
-                console.log("Polling response:", json);
-
-                if (json.status === "Completed") {
-                    setResult(json.data);
+                if (res.status === 200) {
                     setLoading(false);
+                    const result = await res.json();
+                    console.log("Request result:", result.data);
+                    setResult(result.data);
                     clearInterval(pollingRef.current);
                     pollingRef.current = null;
-                    localStorage.removeItem("lastRequestId");
+                    setLoading(false);
                 }
             } catch (err) {
                 console.error(err);
@@ -40,20 +39,17 @@ export function useDataRequest(userId) {
         setResult(null);
 
         try {
-            const response = await fetch("https://localhost:5001/api/data/request", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId })
-            });
+            const response = await fetch(`http://localhost:5223/api/Polling/${userId}`);
 
-            if (!response.ok) 
+            if (!response.ok)
                 throw new Error("Failed to request data");
-
-            const { requestId } = await response.json();
-            console.log("Request started with ID:", requestId);
-            setRequestId(requestId);
-            localStorage.setItem("lastRequestId", requestId);
-            startPolling(requestId);
+            if (response.status === 200) {
+                setLoading(false);
+                const result = await response.json();
+                console.log("Request result:", result.data);
+                setResult(result.data);
+            } else if (response.status === 202)
+                startPolling(requestId);
         } catch (err) {
             console.error("Error:", err);
             setLoading(false);
@@ -70,5 +66,5 @@ export function useDataRequest(userId) {
         };
     }, []);
 
-    return { loading, result, requestData };
+    return {loading, result, requestData};
 }
