@@ -7,15 +7,15 @@ namespace ProcessingService.Controllers
     [Route("api/[controller]")]
     public class TaskController : ControllerBase
     {
-        [HttpPost("{clientId}")]
+        [HttpGet("{clientId}")]
         public IActionResult StartTask(string clientId)
         {
             var requestId = Guid.NewGuid().ToString();
-            int count = ResultStore.RequestCount;
+            var count = ResultStore.RequestCount;
 
             if (count % 10 == 0)
-                return StatusCode(500, $"Simulated error: request #{requestId}");
-                
+                return StatusCode(500, $"Simulated error: #{clientId}");
+
             Task.Run(async () =>
             {
                 await Task.Delay(TimeSpan.FromSeconds(60));
@@ -23,16 +23,20 @@ namespace ProcessingService.Controllers
                 ResultStore.Data.TryAdd(requestId, $"Unique result for {clientId} at {DateTime.UtcNow}");
             });
 
-            return Ok(new { requestId });
+            return Ok(new RequestId(requestId));
         }
 
         [HttpGet("result/{requestId}")]
         public IActionResult GetResult(string requestId)
         {
             if (!ResultStore.Data.TryGetValue(requestId, out var result))
-                return Accepted(new { status = "Processing" });
+                return Accepted(new RequestStatus("Processing"));
 
-            return Ok(new { result });
+            return Ok(new RequestResult(result));
         }
     }
+
+    public record RequestId(string Id);
+    public record RequestStatus(string Status);
+    public record RequestResult(string Result);
 }
