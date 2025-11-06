@@ -54,7 +54,7 @@ public class DataServiceTests
         _externalApiMock.GetDataAsync(clientId).Returns(Task.FromResult(fetchedData));
 
         // Act
-        _service.StartFetch(clientId);
+        await _service.StartFetch(clientId);
         await Task.Delay(50);
 
         // Assert cache filled
